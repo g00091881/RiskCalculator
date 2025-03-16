@@ -1,11 +1,11 @@
-document.getElementById("risk-form").addEventListener("submit", async function(event) {
+document.getElementById("risk-form").addEventListener("submit", function(event) {
     event.preventDefault();
 
-    const age = document.getElementById("age").value;
-    const weight = document.getElementById("weight").value;
-    const height = document.getElementById("height").value;
+    const age = parseInt(document.getElementById("age").value);
+    const weight = parseFloat(document.getElementById("weight").value);
+    const height = parseFloat(document.getElementById("height").value);
     const bloodPressure = document.getElementById("bloodPressure").value;
-    
+
     const familyHistory = [];
     if (document.getElementById("diabetes").checked) familyHistory.push("diabetes");
     if (document.getElementById("cancer").checked) familyHistory.push("cancer");
@@ -18,20 +18,43 @@ document.getElementById("risk-form").addEventListener("submit", async function(e
 
     document.getElementById("error").textContent = "";
 
-    const response = await fetch("http://localhost:5000/calculate-risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ age, weight, height, bloodPressure, familyHistory }),
-    });
+    const heightInMeters = height / 100;
+    const bmi = weight / (heightInMeters * heightInMeters);
+    let score = 0;
 
-    const data = await response.json();
+    // Age Score
+    if (age < 30) score += 0;
+    else if (age < 45) score += 10;
+    else if (age < 60) score += 20;
+    else score += 30;
 
-    if (response.ok) {
-        document.getElementById("result").innerHTML = `
-            <p><strong>Score:</strong> ${data.score}</p>
-            <p><strong>Risk Category:</strong> ${data.riskCategory}</p>
-        `;
-    } else {
-        document.getElementById("error").textContent = data.error;
-    }
+    // BMI Score
+    if (bmi < 25) score += 0;
+    else if (bmi < 30) score += 30;
+    else score += 75;
+
+    // Blood Pressure Score
+    const bpScores = {
+        "normal": 0,
+        "elevated": 15,
+        "stage 1": 30,
+        "stage 2": 75,
+        "crisis": 100
+    };
+    score += bpScores[bloodPressure] || 0;
+
+    // Family History Score
+    score += familyHistory.length * 10;
+
+    // Risk Category
+    let riskCategory = "Uninsurable";
+    if (score <= 20) riskCategory = "Low Risk";
+    else if (score <= 50) riskCategory = "Moderate Risk";
+    else if (score <= 75) riskCategory = "High Risk";
+
+    document.getElementById("result").innerHTML = `
+        <p><strong>Score:</strong> ${score}</p>
+        <p><strong>Risk Category:</strong> ${riskCategory}</p>
+    `;
 });
+
